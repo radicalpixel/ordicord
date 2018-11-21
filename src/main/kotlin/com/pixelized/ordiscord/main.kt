@@ -9,6 +9,7 @@ private const val ARGS_TOKEN = 0
 
 fun main(args: Array<String>) {
     val token = args[ARGS_TOKEN] as String?
+
     try {
         // todo config parser
         val config = Config(
