@@ -14,7 +14,7 @@ import net.dv8tion.jda.core.hooks.EventListener
 
 abstract class DiscordBot(jda: JDA, config: Config) : EventListener {
     private var channel: MessageChannel? = jda.textChannels.find { it.name == config.channel }
-    private val bot: SelfUser? = jda.selfUser
+    val bot: SelfUser? = jda.selfUser
     abstract val commands: CommandStore
 
     override fun onEvent(event: Event?) {

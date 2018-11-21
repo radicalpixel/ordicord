@@ -7,8 +7,10 @@ import com.pixelized.ordiscord.engine.cmd.model.CommandPattern
 import com.pixelized.ordiscord.engine.config.Config
 import com.pixelized.ordiscord.network.store.WarframeStore
 import com.pixelized.ordiscord.util.write
+import net.dv8tion.jda.core.EmbedBuilder
 import net.dv8tion.jda.core.JDA
 import net.dv8tion.jda.core.entities.MessageChannel
+import java.awt.Color
 
 class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
     private val store = WarframeStore()
@@ -16,7 +18,8 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
         override val dictionary: List<CommandPattern>
             get() = arrayListOf(
                     CommandPattern(CMD_REFRESH, "refresh"),
-                    CommandPattern(CMD_ALERT, "alert")
+                    CommandPattern(CMD_ALERT, "alert"),
+                    CommandPattern(CMD_TEST, "test")
             )
     }
 
@@ -34,6 +37,27 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
                         } ?: ""
                 )
             }
+            CMD_TEST -> {
+                store.worldState.value?.alerts?.forEach { alert ->
+                    val delta = alert.expiry.date.long - System.currentTimeMillis()
+                    val seconds = (delta / 1000) % 60
+                    val minutes = (delta / (1000 * 60) % 60)
+                    val hours = (delta / (1000 * 60 * 60) % 24)
+                    val builder = EmbedBuilder()
+                            .setThumbnail("http://content.warframe.com/MobileExport${alert.missionInfo.missionReward.items?.get(0) ?: ""}.png")
+                            .addField("Alert", "${alert.missionInfo.missionType} - ${alert.missionInfo.faction}", false)
+                            .addField("Credit", "${alert.missionInfo.missionReward.credits}", true)
+                            .addField("Until", "$hours:$minutes:$seconds", true)
+                            .setColor(Color.RED)
+                    if (alert.missionInfo.missionReward.items?.size ?: 0 > 0) {
+                        builder.addField("Item", alert.missionInfo.missionReward.items?.joinToString(separator = ", ") { it }, true)
+                    }
+                    if (alert.missionInfo.missionReward.countedItems?.size ?: 0 > 0) {
+                        builder.addField("Item", alert.missionInfo.missionReward.countedItems?.joinToString(separator = ", ") { it.itemType }, true)
+                    }
+                    channel.sendMessage(builder.build()).queue()
+                }
+            }
         }
     }
 
@@ -44,5 +68,6 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
     companion object {
         const val CMD_REFRESH = "cmd_refresh"
         const val CMD_ALERT = "cmd_alert"
+        const val CMD_TEST = "cmd_test"
     }
 }
