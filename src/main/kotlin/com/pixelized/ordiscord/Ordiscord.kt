@@ -4,6 +4,7 @@ import com.pixelized.ordiscord.engine.bot.DiscordBot
 import com.pixelized.ordiscord.engine.cmd.CommandStore
 import com.pixelized.ordiscord.engine.cmd.model.Command
 import com.pixelized.ordiscord.engine.cmd.model.CommandPattern
+import com.pixelized.ordiscord.engine.cmd.model.OptionPattern
 import com.pixelized.ordiscord.engine.config.Config
 import com.pixelized.ordiscord.network.store.WarframeStore
 import com.pixelized.ordiscord.util.write
@@ -17,7 +18,12 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
     override val commands = object : CommandStore() {
         override val dictionary: List<CommandPattern>
             get() = arrayListOf(
-                    CommandPattern(CMD_REFRESH, "refresh"),
+                    CommandPattern(CMD_REFRESH, "refresh", listOf(
+                            OptionPattern(OPT_WORLD, short = "-w", long = "--world",
+                                    description = "This will force a refresh of Warframe world state, alert, invasion, sortie will be updated."),
+                            OptionPattern(OPT_ITEM, short = "-i", long = "--item",
+                                    description = "This will force a refresh of Warframe item data, id/name/image of items will be updated.")
+                    )),
                     CommandPattern(CMD_ALERT, "alert"),
                     CommandPattern(CMD_TEST, "test")
             )
@@ -26,7 +32,12 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
     override fun onCommand(channel: MessageChannel, command: Command) {
         when (command.id) {
             CMD_REFRESH -> {
-                store.refreshWorldState()
+                if (command.options?.any { it.id == OPT_ITEM } == true) {
+                    store.refreshItems()
+                }
+                if (command.options?.any { it.id == OPT_WORLD } == true) {
+                    store.refreshWorldState()
+                }
             }
             CMD_ALERT -> {
                 channel.write(
@@ -69,5 +80,8 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
         const val CMD_REFRESH = "cmd_refresh"
         const val CMD_ALERT = "cmd_alert"
         const val CMD_TEST = "cmd_test"
+
+        const val OPT_ITEM = "opt_item"
+        const val OPT_WORLD = "opt_world"
     }
 }
