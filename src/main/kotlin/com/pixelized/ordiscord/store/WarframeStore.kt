@@ -34,9 +34,10 @@ class WarframeStore(private val config: Config) {
                             minEnemyLevel = it.missionInfo.minEnemyLevel,
                             maxEnemyLevel = it.missionInfo.maxEnemyLevel,
                             credits = it.missionInfo.missionReward.credits,
-                            reward = mutableListOf<String>()
-                                    .plus(it.missionInfo.missionReward.items?.map { it.name() } ?: listOf())
-                                    .plus(it.missionInfo.missionReward.countedItems?.map { it.itemType.name() }
+                            reward = mutableListOf<Pair<String, String>>()
+                                    .plus(it.missionInfo.missionReward.items?.map { it.name() to it.image() }
+                                            ?: listOf())
+                                    .plus(it.missionInfo.missionReward.countedItems?.map { it.itemType.name() to it.itemType.image() }
                                             ?: listOf()))
                 }
             } ?: listOf()
@@ -60,4 +61,5 @@ class WarframeStore(private val config: Config) {
     }
 
     private fun String.name() = items.value.find { it.id == this }?.name ?: this
+    private fun String.image() = items.value.find { it.id == this }?.image ?: this
 }

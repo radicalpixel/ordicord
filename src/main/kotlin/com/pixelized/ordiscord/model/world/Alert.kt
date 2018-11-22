@@ -8,5 +8,5 @@ data class Alert(
         val minEnemyLevel: String,
         val maxEnemyLevel: String,
         val credits: Int,
-        val reward: List<String> = listOf()
+        val reward: List<Pair<String, String>> = listOf()
 )

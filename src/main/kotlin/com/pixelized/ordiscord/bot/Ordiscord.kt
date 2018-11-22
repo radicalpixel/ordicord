@@ -5,6 +5,7 @@ import com.pixelized.ordiscord.model.command.Command
 import com.pixelized.ordiscord.model.command.CommandPattern
 import com.pixelized.ordiscord.model.command.OptionPattern
 import com.pixelized.ordiscord.model.config.Config
+import com.pixelized.ordiscord.model.item.Item
 import com.pixelized.ordiscord.store.WarframeStore
 import com.pixelized.ordiscord.util.write
 import net.dv8tion.jda.core.EmbedBuilder
@@ -23,7 +24,10 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
                             OptionPattern(OPT_ITEM, short = "-i", long = "--item",
                                     description = "This will force a refresh of Warframe item data, id/name/image of items will be updated.")
                     )),
-                    CommandPattern(CMD_ALERT, "alert"),
+                    CommandPattern(CMD_ALERT, "alert", listOf(
+                            OptionPattern(OPT_TEXT, short = "-t", long = "--text",
+                                    description = "display a simplified text version of this command.")
+                    )),
                     CommandPattern(CMD_TEST, "test")
             )
     }
@@ -39,34 +43,33 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
                 }
             }
             CMD_ALERT -> {
-                channel.write(
-                        store.worldState.value?.alerts?.joinToString(separator = "\n") { alert ->
-                            "${alert.missionInfo.missionType} - ${alert.missionInfo.faction} - ${alert.missionInfo.missionReward.credits} credits"
-                                    .plus(if (alert.missionInfo.missionReward.items?.size ?: 0 > 0) "\n" + alert.missionInfo.missionReward.items?.joinToString(separator = ", ") { it } else "")
-                                    .plus(if (alert.missionInfo.missionReward.countedItems?.size ?: 0 > 0) "\n" + alert.missionInfo.missionReward.countedItems?.joinToString(separator = ", ") { it.itemType } else "")
-                        } ?: ""
-                )
+                if (command.options?.any { it.id == OPT_TEXT } == true) {
+                    channel.write(store.alerts.value.joinToString(separator = "\n") { alert ->
+                        "${alert.missionType} - ${alert.faction} - ${alert.credits} credits${alert.reward.joinToString(prefix = "\n", separator = ", ") { it.first }}"
+                    })
+                } else {
+                    store.alerts.value.forEach { alert ->
+                        // remaining time
+                        val delta = alert.expiry - System.currentTimeMillis()
+                        val seconds = (delta / 1000) % 60
+                        val minutes = (delta / (1000 * 60) % 60)
+                        val hours = (delta / (1000 * 60 * 60) % 24)
+                        // item
+                        val builder = EmbedBuilder()
+                                .addField("Alert", "${alert.missionType} - ${alert.faction}", false)
+                                .addField("Credit", "${alert.credits}", true)
+                                .addField("Until", "$hours:$minutes:$seconds", true)
+                                .setColor(Color.RED)
+                        if (alert.reward.isNotEmpty()) {
+                            builder.addField("Item", alert.reward.joinToString(separator = ", ") { it.first }, true)
+                                    .setThumbnail("https://cdn.warframestat.us/img/${alert.reward[0].second}.png")
+                        }
+                        channel.sendMessage(builder.build()).queue()
+                    }
+                }
             }
             CMD_TEST -> {
-                store.worldState.value?.alerts?.forEach { alert ->
-                    val delta = alert.expiry.date.long - System.currentTimeMillis()
-                    val seconds = (delta / 1000) % 60
-                    val minutes = (delta / (1000 * 60) % 60)
-                    val hours = (delta / (1000 * 60 * 60) % 24)
-                    val builder = EmbedBuilder()
-                            .setThumbnail("http://content.warframe.com/MobileExport${alert.missionInfo.missionReward.items?.get(0) ?: ""}.png")
-                            .addField("Alert", "${alert.missionInfo.missionType} - ${alert.missionInfo.faction}", false)
-                            .addField("Credit", "${alert.missionInfo.missionReward.credits}", true)
-                            .addField("Until", "$hours:$minutes:$seconds", true)
-                            .setColor(Color.RED)
-                    if (alert.missionInfo.missionReward.items?.size ?: 0 > 0) {
-                        builder.addField("Item", alert.missionInfo.missionReward.items?.joinToString(separator = ", ") { it }, true)
-                    }
-                    if (alert.missionInfo.missionReward.countedItems?.size ?: 0 > 0) {
-                        builder.addField("Item", alert.missionInfo.missionReward.countedItems?.joinToString(separator = ", ") { it.itemType }, true)
-                    }
-                    channel.sendMessage(builder.build()).queue()
-                }
+
             }
         }
     }
@@ -82,5 +85,7 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
 
         const val OPT_ITEM = "opt_item"
         const val OPT_WORLD = "opt_world"
+
+        const val OPT_TEXT = "opt_text"
     }
 }
