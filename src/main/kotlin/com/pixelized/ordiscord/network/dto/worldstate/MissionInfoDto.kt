@@ -2,7 +2,7 @@ package com.pixelized.ordiscord.network.dto.worldstate
 
 import com.google.gson.annotations.SerializedName
 
-data class MissionInfo(
+data class MissionInfoDto(
         @SerializedName("missionType")
         val missionType : String,
         @SerializedName("faction")
@@ -12,5 +12,5 @@ data class MissionInfo(
         @SerializedName("maxEnemyLevel")
         val maxEnemyLevel: String,
         @SerializedName("missionReward")
-        val missionReward: MissionReward
+        val missionReward: MissionRewardDto
 )

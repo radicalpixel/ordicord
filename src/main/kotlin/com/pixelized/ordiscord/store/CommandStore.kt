@@ -4,13 +4,13 @@ import com.pixelized.ordiscord.model.command.Command
 import com.pixelized.ordiscord.model.command.CommandPattern
 import com.pixelized.ordiscord.model.command.Option
 import com.pixelized.ordiscord.model.command.OptionPattern
+import com.pixelized.ordiscord.util.isUser
 
 import java.util.ArrayList
 import java.util.regex.Pattern
 
 abstract class CommandStore {
     // regex
-    private val userRegex = Pattern.compile("^<(.*?)>\$")
     private val commandRegex = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'")
 
     abstract val dictionary: List<CommandPattern>
@@ -32,7 +32,7 @@ abstract class CommandStore {
         var optionPattern: OptionPattern? = null
         for (argument in split(commandLine)) {
             // ignore this argument if it match a user and the command pattern have not been found yet.
-            if (commandPattern == null && userRegex.matcher(argument).find()) {
+            if (commandPattern == null && argument.isUser()) {
                 continue
             }
             if (commandPattern == null) {
