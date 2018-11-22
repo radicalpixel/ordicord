@@ -67,7 +67,7 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
                                 .setColor(Color.RED)
                         if (alert.reward.isNotEmpty()) {
                             builder.addField("Item", alert.reward.joinToString(prefix = "\n", separator = ", ") { it nameFrom store }, true)
-                            builder.setThumbnail("https://cdn.warframestat.us/img/${alert.reward[0] imageFrom store}.png")
+                            builder.setThumbnail("https://cdn.warframestat.us/img/${alert.reward[0] imageFrom store}")
                         }
                         channel.sendMessage(builder.build()).queue()
                     }
