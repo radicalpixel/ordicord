@@ -1,4 +1,4 @@
-package com.pixelized.ordiscord.model
+package com.pixelized.ordiscord.model.item
 
 data class Item(
         val id: String,

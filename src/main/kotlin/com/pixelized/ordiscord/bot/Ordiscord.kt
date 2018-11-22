@@ -1,12 +1,11 @@
-package com.pixelized.ordiscord
+package com.pixelized.ordiscord.bot
 
-import com.pixelized.ordiscord.engine.bot.DiscordBot
-import com.pixelized.ordiscord.engine.cmd.CommandStore
-import com.pixelized.ordiscord.engine.cmd.model.Command
-import com.pixelized.ordiscord.engine.cmd.model.CommandPattern
-import com.pixelized.ordiscord.engine.cmd.model.OptionPattern
-import com.pixelized.ordiscord.engine.config.Config
-import com.pixelized.ordiscord.network.store.WarframeStore
+import com.pixelized.ordiscord.store.CommandStore
+import com.pixelized.ordiscord.model.command.Command
+import com.pixelized.ordiscord.model.command.CommandPattern
+import com.pixelized.ordiscord.model.command.OptionPattern
+import com.pixelized.ordiscord.model.config.Config
+import com.pixelized.ordiscord.store.WarframeStore
 import com.pixelized.ordiscord.util.write
 import net.dv8tion.jda.core.EmbedBuilder
 import net.dv8tion.jda.core.JDA

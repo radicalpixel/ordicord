@@ -1,9 +1,9 @@
 package com.pixelized.ordiscord.test
 
-import com.pixelized.ordiscord.engine.cmd.CommandStore
-import com.pixelized.ordiscord.engine.cmd.model.CommandPattern
-import com.pixelized.ordiscord.engine.cmd.model.OptionPattern
-import com.pixelized.ordiscord.engine.cmd.CommandStore.ParseException
+import com.pixelized.ordiscord.store.CommandStore
+import com.pixelized.ordiscord.model.command.CommandPattern
+import com.pixelized.ordiscord.model.command.OptionPattern
+import com.pixelized.ordiscord.store.CommandStore.ParseException
 import org.junit.Assert
 import org.junit.Test
 

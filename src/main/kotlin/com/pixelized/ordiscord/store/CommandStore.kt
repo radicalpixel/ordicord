@@ -1,9 +1,9 @@
-package com.pixelized.ordiscord.engine.cmd
+package com.pixelized.ordiscord.store
 
-import com.pixelized.ordiscord.engine.cmd.model.Command
-import com.pixelized.ordiscord.engine.cmd.model.CommandPattern
-import com.pixelized.ordiscord.engine.cmd.model.Option
-import com.pixelized.ordiscord.engine.cmd.model.OptionPattern
+import com.pixelized.ordiscord.model.command.Command
+import com.pixelized.ordiscord.model.command.CommandPattern
+import com.pixelized.ordiscord.model.command.Option
+import com.pixelized.ordiscord.model.command.OptionPattern
 
 import java.util.ArrayList
 import java.util.regex.Pattern

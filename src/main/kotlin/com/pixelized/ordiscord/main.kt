@@ -1,6 +1,7 @@
 package com.pixelized.ordiscord
 
-import com.pixelized.ordiscord.engine.config.Config
+import com.pixelized.ordiscord.bot.Ordiscord
+import com.pixelized.ordiscord.model.config.Config
 import net.dv8tion.jda.core.AccountType
 import net.dv8tion.jda.core.JDABuilder
 import javax.security.auth.login.LoginException
@@ -13,7 +14,8 @@ fun main(args: Array<String>) {
     try {
         // todo config parser
         val config = Config(
-                channel = "warframe"
+                channel = "warframe",
+                itemsPath = "./src/main/resources/data.json"
         )
 
         JDABuilder(AccountType.BOT)

@@ -1,4 +1,4 @@
-package com.pixelized.ordiscord.network.dto
+package com.pixelized.ordiscord.network.dto.item
 
 import com.google.gson.annotations.SerializedName
 

@@ -1,12 +1,12 @@
-package com.pixelized.ordiscord.network.store
+package com.pixelized.ordiscord.store
 
 import com.google.gson.GsonBuilder
 import com.google.gson.stream.JsonReader
-import com.pixelized.ordiscord.engine.config.Config
-import com.pixelized.ordiscord.model.Item
+import com.pixelized.ordiscord.model.config.Config
+import com.pixelized.ordiscord.model.item.Item
 import com.pixelized.ordiscord.network.client.WarframeClient
-import com.pixelized.ordiscord.network.dto.ItemDto
-import com.pixelized.ordiscord.network.dto.WorldState
+import com.pixelized.ordiscord.network.dto.item.ItemDto
+import com.pixelized.ordiscord.network.dto.worldstate.WorldState
 import com.pixelized.ordiscord.util.Observable
 import java.io.File
 import java.io.FileReader

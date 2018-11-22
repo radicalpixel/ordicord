@@ -1,4 +1,4 @@
-package com.pixelized.ordiscord.engine.cmd.model
+package com.pixelized.ordiscord.model.command
 
 data class OptionPattern(
         val id: String,

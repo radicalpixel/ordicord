@@ -1,4 +1,4 @@
-package com.pixelized.ordiscord.engine.config
+package com.pixelized.ordiscord.model.config
 
 import com.google.gson.annotations.SerializedName
 

@@ -1,8 +1,8 @@
-package com.pixelized.ordiscord.engine.bot
+package com.pixelized.ordiscord.bot
 
-import com.pixelized.ordiscord.engine.cmd.CommandStore
-import com.pixelized.ordiscord.engine.cmd.model.Command
-import com.pixelized.ordiscord.engine.config.Config
+import com.pixelized.ordiscord.store.CommandStore
+import com.pixelized.ordiscord.model.command.Command
+import com.pixelized.ordiscord.model.config.Config
 import com.pixelized.ordiscord.util.Log
 import net.dv8tion.jda.core.JDA
 import net.dv8tion.jda.core.entities.MessageChannel
