@@ -80,7 +80,7 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
     }
 
     override fun onCommandError(channel: MessageChannel, exception: CommandStore.ParseException) {
-
+        channel.write("Tenno, I have encounter an error !\n${exception.message}")
     }
 
     companion object {
