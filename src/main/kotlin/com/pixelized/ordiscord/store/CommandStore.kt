@@ -5,6 +5,7 @@ import com.pixelized.ordiscord.model.command.CommandPattern
 import com.pixelized.ordiscord.model.command.Option
 import com.pixelized.ordiscord.model.command.OptionPattern
 import com.pixelized.ordiscord.util.isUser
+import java.text.ParseException
 
 import java.util.ArrayList
 import java.util.regex.Pattern
@@ -12,6 +13,7 @@ import java.util.regex.Pattern
 abstract class CommandStore {
     // regex
     private val commandRegex = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'")
+    private val multipleOptionRegex = Pattern.compile("^-{1}[a-zA-Z]{2,}$")
 
     abstract val dictionary: List<CommandPattern>
 
@@ -49,14 +51,32 @@ abstract class CommandStore {
             } else {
                 // we ether don't have a option pattern yet, or we filled the previous one arguments, find an option or rise an exception.
                 if (optionPattern == null || optionPattern.args == command.options?.lastOrNull()?.args?.size ?: 0) {
-                    optionPattern = commandPattern.options?.find { it.short == argument || it.long == argument }
-                    if (optionPattern == null) {
-                        throw ParseException.UnexpectedOption(commandLine)
+                    if (multipleOptionRegex.matcher(argument).find()) {
+                        (1 until argument.length).forEach { "-${argument[it]}".let { argument ->
+                            val optionPattern = commandPattern.options?.find { it.short == argument || it.long == argument }
+                            if (optionPattern != null) {
+                                if (optionPattern.args == 0) {
+                                    command.options?.add(Option(
+                                            id = optionPattern.id,
+                                            args = if (optionPattern.args > 0) arrayListOf() else null
+                                    ))
+                                } else {
+                                    throw ParseException.UnconcatenableOption(commandLine)
+                                }
+                            } else {
+                                throw ParseException.UnexpectedOption(commandLine)
+                            }
+                        }}
                     } else {
-                        command.options?.add(Option(
-                                id = optionPattern.id,
-                                args = if (optionPattern.args > 0) arrayListOf() else null
-                        ))
+                        optionPattern = commandPattern.options?.find { it.short == argument || it.long == argument }
+                        if (optionPattern == null) {
+                            throw ParseException.UnexpectedOption(commandLine)
+                        } else {
+                            command.options?.add(Option(
+                                    id = optionPattern.id,
+                                    args = if (optionPattern.args > 0) arrayListOf() else null
+                            ))
+                        }
                     }
                 } else {
                     // the option pattern need at more arguments that we currently have.
@@ -132,5 +152,8 @@ abstract class CommandStore {
 
         class MissingMandatoryArgument(optionPattern: OptionPattern, commandLine: String)
             : ParseException("\"$commandLine\" :: Missing mandatory argument, at least ${optionPattern.args} arguments needed for option: ${optionPattern.short}")
+
+        class UnconcatenableOption(commandLine: String)
+            : ParseException("\"$commandLine\" :: impossible to use option concatenation on option that require arguments ")
     }
 }

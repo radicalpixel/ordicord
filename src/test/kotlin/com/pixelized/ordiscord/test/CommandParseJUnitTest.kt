@@ -15,11 +15,15 @@ class CommandParseJUnitTest {
             override val dictionary: List<CommandPattern>
                 get() = arrayListOf(
                         CommandPattern(id = "cmd_refresh", keyword = "refresh"),
-                        CommandPattern(id = "cmd_item", keyword = "item", options = arrayListOf(
+                        CommandPattern(id = "cmd_alert", keyword = "alert", options = listOf(
+                                OptionPattern("opt_text", "simplified text mode", "-t", "--text"),
+                                OptionPattern("opt_embed", "embedded mode", "-e", "--embedded")
+                        )),
+                        CommandPattern(id = "cmd_item", keyword = "item", options = listOf(
                                 OptionPattern("opt_list", "list item", "-l", "--list"),
                                 OptionPattern("opt_add", "add item", "-a", "--add", false, 2)
                         )),
-                        CommandPattern(id = "cmd_user", keyword = "user", options = arrayListOf(
+                        CommandPattern(id = "cmd_user", keyword = "user", options = listOf(
                                 OptionPattern("opt_user", "user", "-u", "--user", true, 1),
                                 OptionPattern("opt_item", "item list", "-i", "--item"),
                                 OptionPattern("opt_friend", "friend list", "-f", "--friend")
@@ -31,6 +35,92 @@ class CommandParseJUnitTest {
             commandStore.parse("refresh").apply {
                 Assert.assertNotNull(this)
                 Assert.assertEquals("cmd_refresh", id)
+            }
+        } catch (e: ParseException) {
+            Assert.fail(e.message)
+        }
+
+        try {
+            commandStore.parse("alert").apply {
+                Assert.assertNotNull(this)
+                Assert.assertEquals("cmd_alert", id)
+            }
+        } catch (e: ParseException) {
+            Assert.fail(e.message)
+        }
+
+        try {
+            commandStore.parse("alert -t").apply {
+                Assert.assertNotNull(this)
+                Assert.assertEquals("cmd_alert", id)
+                options?.get(0).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_text", id)
+                }
+            }
+        } catch (e: ParseException) {
+            Assert.fail(e.message)
+        }
+
+        try {
+            commandStore.parse("alert -e").apply {
+                Assert.assertNotNull(this)
+                Assert.assertEquals("cmd_alert", id)
+                options?.get(0).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_embed", id)
+                }
+            }
+        } catch (e: ParseException) {
+            Assert.fail(e.message)
+        }
+
+        try {
+            commandStore.parse("alert -t -e").apply {
+                Assert.assertNotNull(this)
+                Assert.assertEquals("cmd_alert", id)
+                options?.get(0).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_text", id)
+                }
+                options?.get(1).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_embed", id)
+                }
+            }
+        } catch (e: ParseException) {
+            Assert.fail(e.message)
+        }
+
+        try {
+            commandStore.parse("alert -te").apply {
+                Assert.assertNotNull(this)
+                Assert.assertEquals("cmd_alert", id)
+                options?.get(0).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_text", id)
+                }
+                options?.get(1).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_embed", id)
+                }
+            }
+        } catch (e: ParseException) {
+            Assert.fail(e.message)
+        }
+
+        try {
+            commandStore.parse("alert -et").apply {
+                Assert.assertNotNull(this)
+                Assert.assertEquals("cmd_alert", id)
+                options?.get(0).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_embed", id)
+                }
+                options?.get(1).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_text", id)
+                }
             }
         } catch (e: ParseException) {
             Assert.fail(e.message)
@@ -317,6 +407,28 @@ class CommandParseJUnitTest {
             }
         } catch (e: ParseException) {
             Assert.assertTrue(e is CommandStore.ParseException.MissingMandatoryArgument)
+        }
+    }
+
+    @Test
+    fun testUnconcatenableOption() {
+        val commandStore = object : CommandStore() {
+            override val dictionary: List<CommandPattern>
+                get() = arrayListOf(
+                        CommandPattern(id = "cmd_alert", keyword = "alert", options = listOf(
+                                OptionPattern("opt_text", "simplified text mode", "-t", "--text", false, 1),
+                                OptionPattern("opt_embed", "embedded mode", "-e", "--embedded")
+                        ))
+                )
+        }
+
+        try {
+            "alert -te".apply {
+                commandStore.parse(this)
+                Assert.fail("commandStore.parse(\"$this\") should rise an exception !")
+            }
+        } catch (e: ParseException) {
+            Assert.assertTrue(e is CommandStore.ParseException.UnconcatenableOption)
         }
     }
 }
