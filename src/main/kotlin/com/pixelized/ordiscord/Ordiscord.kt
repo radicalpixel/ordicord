@@ -13,7 +13,7 @@ import net.dv8tion.jda.core.entities.MessageChannel
 import java.awt.Color
 
 class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
-    private val store = WarframeStore()
+    private val store = WarframeStore(config)
     override val commands = object : CommandStore() {
         override val dictionary: List<CommandPattern>
             get() = arrayListOf(
@@ -26,7 +26,7 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
     override fun onCommand(channel: MessageChannel, command: Command) {
         when (command.id) {
             CMD_REFRESH -> {
-                store.refresh()
+                store.refreshWorldState()
             }
             CMD_ALERT -> {
                 channel.write(
