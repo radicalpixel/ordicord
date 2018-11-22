@@ -21,13 +21,15 @@ abstract class DiscordBot(jda: JDA, config: Config) : EventListener {
         Log.d(this, "Ordiscord::onEvent((" + event?.javaClass?.simpleName + ") event) ->")
         when (event) {
             is MessageReceivedEvent -> {
-                if (event.message.mentionedUsers.contains(bot)) {
+                if (event.author != bot && event.message.mentionedUsers.contains(bot)) {
                     dispatchCommand(event.channel, event.message.contentRaw)
                 }
             }
             is PrivateMessageReceivedEvent -> {
-                event.message.contentRaw?.apply {
-                    dispatchCommand(event.channel, event.message.contentRaw)
+                if (event.author != bot) {
+                    event.message.contentRaw?.apply {
+                        dispatchCommand(event.channel, event.message.contentRaw)
+                    }
                 }
             }
         }
