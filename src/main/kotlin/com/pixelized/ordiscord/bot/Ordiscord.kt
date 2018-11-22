@@ -5,8 +5,9 @@ import com.pixelized.ordiscord.model.command.Command
 import com.pixelized.ordiscord.model.command.CommandPattern
 import com.pixelized.ordiscord.model.command.OptionPattern
 import com.pixelized.ordiscord.model.config.Config
-import com.pixelized.ordiscord.model.item.Item
 import com.pixelized.ordiscord.store.WarframeStore
+import com.pixelized.ordiscord.util.imageFrom
+import com.pixelized.ordiscord.util.nameFrom
 import com.pixelized.ordiscord.util.write
 import net.dv8tion.jda.core.EmbedBuilder
 import net.dv8tion.jda.core.JDA
@@ -64,12 +65,8 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
                                 .addField("Until", "$hours:$minutes:$seconds", true)
                                 .setColor(Color.RED)
                         if (alert.reward.isNotEmpty()) {
-                            builder.addField("Item", alert.reward.joinToString(prefix = "\n", separator = ", ") {
-                                store.items.value.find { item -> item.id == it }?.name ?: it
-                            }, true)
-                            builder.setThumbnail("https://cdn.warframestat.us/img/${alert.reward[0].let {
-                                store.items.value.find { item -> item.id == it }?.image ?: it
-                            }}.png")
+                            builder.addField("Item", alert.reward.joinToString(prefix = "\n", separator = ", ") { it nameFrom store }, true)
+                            builder.setThumbnail("https://cdn.warframestat.us/img/${alert.reward[0] imageFrom store}.png")
                         }
                         channel.sendMessage(builder.build()).queue()
                     }
