@@ -6,6 +6,7 @@ import com.pixelized.ordiscord.model.command.CommandPattern
 import com.pixelized.ordiscord.model.command.OptionPattern
 import com.pixelized.ordiscord.model.config.Config
 import com.pixelized.ordiscord.store.WarframeStore
+import com.pixelized.ordiscord.util.haveOption
 import com.pixelized.ordiscord.util.imageFrom
 import com.pixelized.ordiscord.util.nameFrom
 import com.pixelized.ordiscord.util.write
@@ -36,15 +37,15 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
     override fun onCommand(channel: MessageChannel, command: Command) {
         when (command.id) {
             CMD_REFRESH -> {
-                if (command.options?.any { it.id == OPT_ITEM } == true) {
+                if (command haveOption OPT_ITEM) {
                     store.refreshItems()
                 }
-                if (command.options?.any { it.id == OPT_WORLD } == true) {
+                if (command haveOption OPT_WORLD) {
                     store.refreshWorldState()
                 }
             }
             CMD_ALERT -> {
-                if (command.options?.any { it.id == OPT_TEXT } == true) {
+                if (command haveOption OPT_TEXT) {
                     channel.write(store.alerts.value.joinToString(separator = "\n") { alert ->
                         "${alert.missionType} - ${alert.faction} - ${alert.credits} credits" +
                                 alert.reward.joinToString(prefix = "\n", separator = ", ") {
