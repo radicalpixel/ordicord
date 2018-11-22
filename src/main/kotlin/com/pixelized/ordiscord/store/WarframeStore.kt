@@ -57,5 +57,6 @@ class WarframeStore(private val config: Config) {
                 .flatMap { it.component!! }
                 .plus(itemsDto)
                 .map { Item(it.id, it.name, it.image) }
+                .toSet().toList()
     }
 }
