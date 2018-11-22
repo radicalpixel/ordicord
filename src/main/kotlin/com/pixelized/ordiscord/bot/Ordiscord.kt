@@ -45,7 +45,10 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
             CMD_ALERT -> {
                 if (command.options?.any { it.id == OPT_TEXT } == true) {
                     channel.write(store.alerts.value.joinToString(separator = "\n") { alert ->
-                        "${alert.missionType} - ${alert.faction} - ${alert.credits} credits${alert.reward.joinToString(prefix = "\n", separator = ", ") { it.first }}"
+                        "${alert.missionType} - ${alert.faction} - ${alert.credits} credits" +
+                                alert.reward.joinToString(prefix = "\n", separator = ", ") {
+                                    store.items.value.find { item -> item.id == it }?.name ?: it
+                                }
                     })
                 } else {
                     store.alerts.value.forEach { alert ->
@@ -61,8 +64,12 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
                                 .addField("Until", "$hours:$minutes:$seconds", true)
                                 .setColor(Color.RED)
                         if (alert.reward.isNotEmpty()) {
-                            builder.addField("Item", alert.reward.joinToString(separator = ", ") { it.first }, true)
-                                    .setThumbnail("https://cdn.warframestat.us/img/${alert.reward[0].second}.png")
+                            builder.addField("Item", alert.reward.joinToString(prefix = "\n", separator = ", ") {
+                                store.items.value.find { item -> item.id == it }?.name ?: it
+                            }, true)
+                            builder.setThumbnail("https://cdn.warframestat.us/img/${alert.reward[0].let {
+                                store.items.value.find { item -> item.id == it }?.image ?: it
+                            }}.png")
                         }
                         channel.sendMessage(builder.build()).queue()
                     }
