@@ -15,6 +15,10 @@ class CommandParseJUnitTest {
             override val dictionary: List<CommandPattern>
                 get() = arrayListOf(
                         CommandPattern(id = "cmd_refresh", keyword = "refresh"),
+                        CommandPattern(id = "cmd_channel", keyword = "channel", args = 1, options = listOf(
+                                OptionPattern("opt_add", "add a channel", "-a", "--add"),
+                                OptionPattern("opt_remove", "remove a channel", "-r", "--remove")
+                        )),
                         CommandPattern(id = "cmd_alert", keyword = "alert", options = listOf(
                                 OptionPattern("opt_text", "simplified text mode", "-t", "--text"),
                                 OptionPattern("opt_embed", "embedded mode", "-e", "--embedded")
@@ -35,6 +39,104 @@ class CommandParseJUnitTest {
             commandStore.parse("refresh").apply {
                 Assert.assertNotNull(this)
                 Assert.assertEquals("cmd_refresh", id)
+            }
+        } catch (e: ParseException) {
+            Assert.fail(e.message)
+        }
+
+        try {
+            commandStore.parse("channel -a test").apply {
+                Assert.assertNotNull(this)
+                Assert.assertEquals("cmd_channel", id)
+                Assert.assertEquals(1, args?.size ?: 0)
+                Assert.assertEquals("test", args?.getOrNull(0))
+                options?.get(0).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_add", id)
+                }
+            }
+        } catch (e: ParseException) {
+            Assert.fail(e.message)
+        }
+
+        try {
+            commandStore.parse("channel --add test").apply {
+                Assert.assertNotNull(this)
+                Assert.assertEquals("cmd_channel", id)
+                Assert.assertEquals(1, args?.size ?: 0)
+                Assert.assertEquals("test", args?.getOrNull(0))
+                options?.get(0).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_add", id)
+                }
+            }
+        } catch (e: ParseException) {
+            Assert.fail(e.message)
+        }
+
+        try {
+            commandStore.parse("channel test -a").apply {
+                Assert.assertNotNull(this)
+                Assert.assertEquals("cmd_channel", id)
+                Assert.assertEquals(1, args?.size ?: 0)
+                Assert.assertEquals("test", args?.getOrNull(0))
+                options?.get(0).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_add", id)
+                }
+            }
+        } catch (e: ParseException) {
+            Assert.fail(e.message)
+        }
+
+        try {
+            commandStore.parse("channel test --add").apply {
+                Assert.assertNotNull(this)
+                Assert.assertEquals("cmd_channel", id)
+                Assert.assertEquals(1, args?.size ?: 0)
+                Assert.assertEquals("test", args?.getOrNull(0))
+                options?.get(0).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_add", id)
+                }
+            }
+        } catch (e: ParseException) {
+            Assert.fail(e.message)
+        }
+
+        try {
+            commandStore.parse("channel -ar test").apply {
+                Assert.assertNotNull(this)
+                Assert.assertEquals("cmd_channel", id)
+                Assert.assertEquals(1, args?.size ?: 0)
+                Assert.assertEquals("test", args?.getOrNull(0))
+                options?.get(0).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_add", id)
+                }
+                options?.get(1).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_remove", id)
+                }
+            }
+        } catch (e: ParseException) {
+            Assert.fail(e.message)
+        }
+
+        try {
+            commandStore.parse("channel test -ar").apply {
+                Assert.assertNotNull(this)
+                Assert.assertEquals("cmd_channel", id)
+                Assert.assertEquals(1, args?.size ?: 0)
+                Assert.assertEquals("test", args?.getOrNull(0))
+                options?.get(0).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_add", id)
+                }
+                options?.get(1).apply {
+                    Assert.assertNotNull(this)
+                    Assert.assertNotNull("opt_remove", id)
+                }
             }
         } catch (e: ParseException) {
             Assert.fail(e.message)
@@ -375,11 +477,21 @@ class CommandParseJUnitTest {
         val commandStore = object : CommandStore() {
             override val dictionary: List<CommandPattern>
                 get() = arrayListOf(
-                        CommandPattern(id = "item", keyword = "item", options = arrayListOf(
+                        CommandPattern(id = "cmd_user", keyword = "user", args = 1),
+                        CommandPattern(id = "cmd_item", keyword = "item", options = listOf(
                                 OptionPattern("list", "list item", "-l", "--list"),
                                 OptionPattern("add", "add item", "-a", "--add", false, 2)
                         ))
                 )
+        }
+
+        try {
+            "user".apply {
+                commandStore.parse(this)
+                Assert.fail("commandStore.parse(\"$this\") should rise an exception !")
+            }
+        } catch (e: ParseException) {
+            Assert.assertTrue(e is CommandStore.ParseException.MissingMandatoryArgument)
         }
 
         try {
@@ -411,12 +523,63 @@ class CommandParseJUnitTest {
     }
 
     @Test
-    fun testUnconcatenableOption() {
+    fun testTooManyArgument() {
+        val commandStore = object : CommandStore() {
+            override val dictionary: List<CommandPattern>
+                get() = arrayListOf(
+                        CommandPattern(id = "cmd_refresh", keyword = "refresh"),
+                        CommandPattern(id = "cmd_user", keyword = "user", args = 1),
+                        CommandPattern(id = "cmd_item", keyword = "item", options = listOf(
+                                OptionPattern("list", "list item", "-l", "--list"),
+                                OptionPattern("add", "add item", "-a", "--add", false, 1)
+                        ))
+                )
+        }
+
+        try {
+            "refresh test".apply {
+                commandStore.parse(this)
+                Assert.fail("commandStore.parse(\"$this\") should rise an exception !")
+            }
+        } catch (e: ParseException) {
+            Assert.assertTrue("Exception should be TooManyArgument but was ${e.javaClass.simpleName}", e is CommandStore.ParseException.TooManyArgument)
+        }
+
+        try {
+            "user arg1 arg2".apply {
+                commandStore.parse(this)
+                Assert.fail("commandStore.parse(\"$this\") should rise an exception !")
+            }
+        } catch (e: ParseException) {
+            Assert.assertTrue("Exception should be TooManyArgument but was ${e.javaClass.simpleName}", e is CommandStore.ParseException.TooManyArgument)
+        }
+
+        try {
+            "item -l arg2".apply {
+                commandStore.parse(this)
+                Assert.fail("commandStore.parse(\"$this\") should rise an exception !")
+            }
+        } catch (e: ParseException) {
+            Assert.assertTrue("Exception should be TooManyArgument but was ${e.javaClass.simpleName}", e is CommandStore.ParseException.TooManyArgument)
+        }
+
+        try {
+            "item -a arg1 arg2".apply {
+                commandStore.parse(this)
+                Assert.fail("commandStore.parse(\"$this\") should rise an exception !")
+            }
+        } catch (e: ParseException) {
+            Assert.assertTrue("Exception should be TooManyArgument but was ${e.javaClass.simpleName}", e is CommandStore.ParseException.TooManyArgument)
+        }
+    }
+
+    @Test
+    fun testNonConcatenateOptionOption() {
         val commandStore = object : CommandStore() {
             override val dictionary: List<CommandPattern>
                 get() = arrayListOf(
                         CommandPattern(id = "cmd_alert", keyword = "alert", options = listOf(
-                                OptionPattern("opt_text", "simplified text mode", "-t", "--text", false, 1),
+                                OptionPattern("opt_text", "simplified text mode", "-t", "--text", true, 1),
                                 OptionPattern("opt_embed", "embedded mode", "-e", "--embedded")
                         ))
                 )
@@ -428,7 +591,7 @@ class CommandParseJUnitTest {
                 Assert.fail("commandStore.parse(\"$this\") should rise an exception !")
             }
         } catch (e: ParseException) {
-            Assert.assertTrue(e is CommandStore.ParseException.UnconcatenableOption)
+            Assert.assertTrue("Exception should be UnconcatenableOption but was ${e.javaClass.simpleName}", e is CommandStore.ParseException.NonConcatenateOption)
         }
     }
 }

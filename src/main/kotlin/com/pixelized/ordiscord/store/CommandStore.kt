@@ -4,8 +4,6 @@ import com.pixelized.ordiscord.model.command.Command
 import com.pixelized.ordiscord.model.command.CommandPattern
 import com.pixelized.ordiscord.model.command.Option
 import com.pixelized.ordiscord.model.command.OptionPattern
-import com.pixelized.ordiscord.util.isUser
-import java.text.ParseException
 
 import java.util.ArrayList
 import java.util.regex.Pattern
@@ -13,7 +11,9 @@ import java.util.regex.Pattern
 abstract class CommandStore {
     // regex
     private val commandRegex = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"|'([^']*)'")
-    private val multipleOptionRegex = Pattern.compile("^-{1}[a-zA-Z]{2,}$")
+    private val optionRegex = Pattern.compile("^(-{2}\\w*|-\\w|-[a-zA-Z]{2,})\$")
+    private val multipleOptionRegex = Pattern.compile("^-[a-zA-Z]{2,}$")
+    private val userRegex = Pattern.compile("^<(.*?)>\$")
 
     abstract val dictionary: List<CommandPattern>
 
@@ -26,6 +26,8 @@ abstract class CommandStore {
      * @see ParseException.UnexpectedOption
      * @see ParseException.MissingMandatoryOption
      * @see ParseException.MissingMandatoryArgument
+     * @see ParseException.TooManyArgument
+     * @see ParseException.NonConcatenateOption
      */
     @Throws(ParseException::class)
     fun parse(commandLine: String): Command {
@@ -34,7 +36,7 @@ abstract class CommandStore {
         var optionPattern: OptionPattern? = null
         for (argument in split(commandLine)) {
             // ignore this argument if it match a user and the command pattern have not been found yet.
-            if (commandPattern == null && argument.isUser()) {
+            if (commandPattern == null && userRegex.matcher(argument).find()) {
                 continue
             }
             if (commandPattern == null) {
@@ -45,46 +47,58 @@ abstract class CommandStore {
                 } else {
                     command = Command(
                             id = commandPattern.id,
-                            options = if (commandPattern.options != null) arrayListOf() else null
-                    )
+                            args = if (commandPattern.args > 0) arrayListOf() else null,
+                            options = if (commandPattern.options != null) arrayListOf() else null)
                 }
             } else {
-                // we ether don't have a option pattern yet, or we filled the previous one arguments, find an option or rise an exception.
-                if (optionPattern == null || optionPattern.args == command.options?.lastOrNull()?.args?.size ?: 0) {
+                // check if <argument> is an option of not
+                if (optionRegex.matcher(argument).find()) {
+                    // <argument> is an (or more) option.
+                    if (optionPattern != null) {
+                        val option = command.options?.last()
+                        if (optionPattern.args > option?.args?.size ?: 0) {
+                            throw ParseException.MissingMandatoryArgument(optionPattern, commandLine)
+                        }
+                    }
                     if (multipleOptionRegex.matcher(argument).find()) {
-                        (1 until argument.length).forEach { "-${argument[it]}".let { argument ->
-                            val optionPattern = commandPattern.options?.find { it.short == argument || it.long == argument }
-                            if (optionPattern != null) {
-                                if (optionPattern.args == 0) {
-                                    command.options?.add(Option(
-                                            id = optionPattern.id,
-                                            args = if (optionPattern.args > 0) arrayListOf() else null
-                                    ))
-                                } else {
-                                    throw ParseException.UnconcatenableOption(commandLine)
-                                }
-                            } else {
-                                throw ParseException.UnexpectedOption(commandLine)
-                            }
-                        }}
+                        // <argument> is a multiple option
+                        command.options?.addAll((1 until argument.length)
+                                .map {
+                                    "-${argument[it]}"
+                                }.map { option ->
+                                    commandPattern.options?.find { it.short == option }?.apply {
+                                        if (args > 0) throw ParseException.NonConcatenateOption(commandLine)
+                                    } ?: throw ParseException.UnexpectedOption(commandLine)
+                                }.map {
+                                    Option(id = it.id, args = if (it.args > 0) arrayListOf() else null)
+                                })
                     } else {
+                        // <argument> is a single option
                         optionPattern = commandPattern.options?.find { it.short == argument || it.long == argument }
-                        if (optionPattern == null) {
-                            throw ParseException.UnexpectedOption(commandLine)
+                        if (optionPattern != null) {
+                            command.options?.add(Option(id = optionPattern.id,
+                                    args = if (optionPattern.args > 0) arrayListOf() else null))
                         } else {
-                            command.options?.add(Option(
-                                    id = optionPattern.id,
-                                    args = if (optionPattern.args > 0) arrayListOf() else null
-                            ))
+                            throw ParseException.UnexpectedOption(commandLine)
                         }
                     }
                 } else {
-                    // the option pattern need at more arguments that we currently have.
-                    val otherOptionPattern = commandPattern.options?.find { it.short == argument || it.long == argument }
-                    if (otherOptionPattern != null) {
-                        throw ParseException.MissingMandatoryArgument(optionPattern, commandLine)
+                    // <argument> is not an option.
+                    val option = command.options?.lastOrNull()
+                    if (optionPattern == null || commandPattern.args > 0 && optionPattern.args == option?.args?.size ?: 0) {
+                        // the argument is a command argument.
+                        if (commandPattern.args < (command.args?.size ?: 0) + 1) {
+                            throw ParseException.TooManyArgument(commandPattern, commandLine)
+                        } else {
+                            command.args?.add(argument)
+                        }
                     } else {
-                        command.options?.last()?.args?.add(argument)
+                        // the argument is an option argument.
+                        if (optionPattern.args < (option?.args?.size ?: 0) + 1) {
+                            throw ParseException.TooManyArgument(optionPattern, commandLine)
+                        } else {
+                            option?.args?.add(argument)
+                        }
                     }
                 }
             }
@@ -96,6 +110,10 @@ abstract class CommandStore {
             }
         } catch (e: UninitializedPropertyAccessException) {
             throw ParseException.MissingKeyword(commandLine)
+        }
+        // check if we have all mandatory arguments for the command.
+        if (commandPattern != null && command.args?.size ?: 0 < commandPattern.args) {
+            throw ParseException.MissingMandatoryArgument(commandPattern, commandLine)
         }
         // check if we have all mandatory options.
         if (commandPattern?.options?.filter { it.mandatory }?.map { pattern -> command.options?.find { it.id == pattern.id } }?.any { it == null } == true) {
@@ -150,10 +168,17 @@ abstract class CommandStore {
         class MissingMandatoryOption(commandPattern: CommandPattern, commandLine: String)
             : ParseException("\"$commandLine\" :: Missing at least one mandatory option (${commandPattern.options?.filter { it.mandatory }?.joinToString { it.short }})")
 
-        class MissingMandatoryArgument(optionPattern: OptionPattern, commandLine: String)
-            : ParseException("\"$commandLine\" :: Missing mandatory argument, at least ${optionPattern.args} arguments needed for option: ${optionPattern.short}")
+        class MissingMandatoryArgument : ParseException {
+            constructor(optionPattern: OptionPattern, commandLine: String) : super("\"$commandLine\" :: Missing mandatory argument, at least ${optionPattern.args} arguments needed for option: ${optionPattern.short}")
+            constructor(commandPattern: CommandPattern, commandLine: String) : super("\"$commandLine\" :: Missing mandatory argument, at least ${commandPattern.args} arguments needed for command: ${commandPattern.keyword}")
+        }
 
-        class UnconcatenableOption(commandLine: String)
+        class TooManyArgument : ParseException {
+            constructor(optionPattern: OptionPattern, commandLine: String) : super("\"$commandLine\" :: Too many arguments, no more than ${optionPattern.args} arguments are require for option: ${optionPattern.short}")
+            constructor(commandPattern: CommandPattern, commandLine: String) : super("\"$commandLine\" :: Too many arguments, no more than ${commandPattern.args} arguments are require for command: ${commandPattern.keyword}")
+        }
+
+        class NonConcatenateOption(commandLine: String)
             : ParseException("\"$commandLine\" :: impossible to use option concatenation on option that require arguments ")
     }
 }
