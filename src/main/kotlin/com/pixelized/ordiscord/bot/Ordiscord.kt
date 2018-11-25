@@ -3,41 +3,47 @@ package com.pixelized.ordiscord.bot
 import com.pixelized.ordiscord.store.CommandStore
 import com.pixelized.ordiscord.model.command.Command
 import com.pixelized.ordiscord.model.command.CommandPattern
-import com.pixelized.ordiscord.model.command.Option
 import com.pixelized.ordiscord.model.command.OptionPattern
 import com.pixelized.ordiscord.model.config.Config
-import com.pixelized.ordiscord.model.item.Item
+import com.pixelized.ordiscord.model.world.Alert
 import com.pixelized.ordiscord.store.WarframeStore
-import com.pixelized.ordiscord.util.haveOption
-import com.pixelized.ordiscord.util.imageFrom
-import com.pixelized.ordiscord.util.nameFrom
-import com.pixelized.ordiscord.util.write
+import com.pixelized.ordiscord.util.*
+import com.pixelized.ordiscord.util.Observable
 import net.dv8tion.jda.core.EmbedBuilder
 import net.dv8tion.jda.core.JDA
 import net.dv8tion.jda.core.entities.MessageChannel
 import java.awt.Color
+import java.util.*
+import kotlin.collections.HashMap
 
 class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
     private val store = WarframeStore(config)
+    private var timer: Timer? = null
+
+    private val notificationMap: HashMap<String, MutableList<Long>> = hashMapOf()
+    private var observer: Observable<List<Alert>>.Observer? = null
+
     override val commands = object : CommandStore() {
         override val dictionary: List<CommandPattern>
             get() = arrayListOf(
                     CommandPattern(CMD_REFRESH, "refresh", listOf(
-                            OptionPattern(OPT_HELP, short = "-h", long = "--long",
+                            OptionPattern(OPT_HELP, short = "-h", long = "--help",
                                     description = "Show the command help"),
                             OptionPattern(OPT_WORLD, short = "-w", long = "--world",
                                     description = "This will force a refresh of Warframe world state, alert, invasion, sortie will be updated."),
                             OptionPattern(OPT_ITEM, short = "-i", long = "--item",
-                                    description = "This will force a refresh of Warframe item data, id/name/image of items will be updated.")
+                                    description = "This will force a refresh of Warframe item data, id/name/image of items will be updated."),
+                            OptionPattern(OPT_TIMER, short = "-t", long = "--timer", args = 1,
+                                    description = "Timer use to refresh the world / item data")
                     )),
                     CommandPattern(CMD_ALERT, "alert", listOf(
-                            OptionPattern(OPT_HELP, short = "-h", long = "--long",
+                            OptionPattern(OPT_HELP, short = "-h", long = "--help",
                                     description = "Show the command help"),
                             OptionPattern(OPT_TEXT, short = "-t", long = "--text",
                                     description = "display a simplified text version of this command.")
                     )),
                     CommandPattern(CMD_ITEM, "item", listOf(
-                            OptionPattern(OPT_HELP, short = "-h", long = "--long",
+                            OptionPattern(OPT_HELP, short = "-h", long = "--help",
                                     description = "Show the command help"),
                             OptionPattern(OPT_NAME, short = "-n", long = "--name", args = 1,
                                     description = "search an item by is name"),
@@ -48,6 +54,11 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
                             OptionPattern(OPT_IGNORE_CASE, short = "-i", long = "--ignore",
                                     description = "the research will ignore the case.")
                     )),
+                    CommandPattern(CMD_NOTIFY, "notify", args = 2, options = listOf(
+                            OptionPattern(OPT_NAME, "<item> by name", "-n", "--name"),
+                            OptionPattern(OPT_NAME, "<item> by id", "-i", "--id"),
+                            OptionPattern(OPT_ONLINE, "Only notify when the <player> is connected to discord", "-o", "--online")
+                    ), description = "Notify a <player> <item> when a specific item is available in alert or invasion"),
                     CommandPattern(CMD_TEST, "test")
             )
     }
@@ -58,11 +69,44 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
                 if (command haveOption OPT_HELP && command.options?.size == 1) {
                     channel.write(commands.buildHelpMessage(command))
                 } else {
-                    if (command haveOption OPT_ITEM) {
-                        store.refreshItems()
-                    }
-                    if (command haveOption OPT_WORLD) {
-                        store.refreshWorldState()
+                    if (command haveOption OPT_TIMER) {
+                        observer?.complete()
+                        observer = store.alerts.observe {
+                            it.forEach { alert ->
+                                alert.reward.forEach { itemId ->
+                                    notificationMap[itemId]?.forEach { userId ->
+                                        val player = jda.getUserById(userId)
+                                        channel.write("@${player.name}#${player.discriminator} there is an alert with ${itemId nameFrom store} as a reward")
+                                    }
+                                }
+                            }
+                        }
+                        // get the delay between data refresh.
+                        val delay = try {
+                            command.getOption(OPT_TIMER).args!![0].toLong()
+                        } catch (e: Exception) {
+                            1000L * 60L * 5L
+                        }
+                        // cancel the previous task
+                        timer?.apply {
+                            cancel()
+                            purge()
+                        }
+                        // build and launch a refresh daemon.
+                        timer = Timer("Ordiscord refresh daemon", true).apply {
+                            scheduleAtFixedRate(object : TimerTask() {
+                                override fun run() {
+                                    store.refreshWorldState()
+                                }
+                            }, 1000L, delay)
+                        }
+                    } else {
+                        if (command haveOption OPT_ITEM) {
+                            store.refreshItems()
+                        }
+                        if (command haveOption OPT_WORLD) {
+                            store.refreshWorldState()
+                        }
                     }
                 }
             }
@@ -132,6 +176,23 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
                 }
             }
 
+            CMD_NOTIFY -> {
+                val optionId = command haveOption OPT_ID
+                val paramUser = command.args?.get(0) ?: ""
+                val paramItem = command.args?.get(1) ?: ""
+                val user = jda.getUserByDiscriminator(paramUser).lastOrNull()
+                val item = if (optionId) {
+                    store.items.value.find { it.id == paramItem }
+                } else {
+                    store.items.value.find { it.name == paramItem }
+                }
+
+                if (item != null && user != null) {
+                    notificationMap.getOrPut(item.id) { mutableListOf() }.add(user.idLong)
+                    channel.write("${user.name}, I will notify you about ${item.name}")
+                }
+            }
+
             CMD_TEST -> {
 
             }
@@ -147,6 +208,7 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
         const val CMD_ALERT = "cmd_alert"
         const val CMD_ITEM = "cmd_item"
         const val CMD_TEST = "cmd_test"
+        const val CMD_NOTIFY = "cmd_notify"
         const val OPT_HELP = "opt_help"
         const val OPT_ITEM = "opt_item"
         const val OPT_WORLD = "opt_world"
@@ -155,5 +217,7 @@ class Ordiscord(jda: JDA, config: Config) : DiscordBot(jda, config) {
         const val OPT_IGNORE_CASE = "opt_ignore_case"
         const val OPT_ID = "opt_id"
         const val OPT_NAME = "opt_name"
+        const val OPT_ONLINE = "opt_online"
+        const val OPT_TIMER = "opt_timer"
     }
 }

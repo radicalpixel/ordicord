@@ -9,8 +9,18 @@ class Observable<T>(value: T) {
             observers.forEach { it(field) }
         }
 
-    fun observe(observer: (T) -> Unit) {
+    fun observe(observer: (T) -> Unit): Observer {
         observers.add(observer)
         observer(value)
+        return Observer(observer)
+    }
+
+    inner class Observer(lambda: (T) -> Unit) {
+        private var lambda: ((T) -> Unit)? = lambda
+
+        fun complete() {
+            observers.remove(lambda)
+            lambda = null
+        }
     }
 }

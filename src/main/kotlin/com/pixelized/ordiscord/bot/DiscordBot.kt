@@ -12,7 +12,7 @@ import net.dv8tion.jda.core.events.message.MessageReceivedEvent
 import net.dv8tion.jda.core.events.message.priv.PrivateMessageReceivedEvent
 import net.dv8tion.jda.core.hooks.EventListener
 
-abstract class DiscordBot(jda: JDA, config: Config) : EventListener {
+abstract class DiscordBot(val jda: JDA, config: Config) : EventListener {
     private var channel: MessageChannel? = jda.textChannels.find { it.name == config.channel }
     val bot: SelfUser? = jda.selfUser
     abstract val commands: CommandStore
